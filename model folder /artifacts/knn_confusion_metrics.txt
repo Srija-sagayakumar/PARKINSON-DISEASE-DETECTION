@@ -1,0 +1,23 @@
+Class 1
+TP: 10
+TN: 14
+FP: 6
+FN: 0
+Sensitivity/Recall: 1.0000
+Specificity: 0.7000
+
+Class 2
+TP: 3
+TN: 17
+FP: 3
+FN: 7
+Sensitivity/Recall: 0.3000
+Specificity: 0.8500
+
+Class 3
+TP: 7
+TN: 19
+FP: 1
+FN: 3
+Sensitivity/Recall: 0.7000
+Specificity: 0.9500

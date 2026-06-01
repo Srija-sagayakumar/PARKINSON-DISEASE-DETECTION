@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeuroScan OS — Parkinson's Detection System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --neon-cyan: #00f5ff;
+    --neon-magenta: #ff00e5;
+    --neon-green: #00ff88;
+    --neon-orange: #ff6b00;
+    --neon-red: #ff2020;
+    --dim-cyan: rgba(0,245,255,0.15);
+    --dim-magenta: rgba(255,0,229,0.12);
+    --dim-green: rgba(0,255,136,0.12);
+    --bg-deep: #030b14;
+    --bg-panel: rgba(5,18,30,0.92);
+    --bg-card: rgba(0,20,40,0.85);
+    --border-glow: rgba(0,245,255,0.3);
+    --text-primary: #e0f4ff;
+    --text-muted: rgba(180,220,255,0.6);
+    --font-hud: 'Orbitron', monospace;
+    --font-data: 'Share Tech Mono', monospace;
+    --font-body: 'Rajdhani', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: var(--bg-deep);
+    font-family: var(--font-body);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .shell { position: relative; z-index: 2; padding: 0 0 40px; }
+
+  /* ─── TOP BAR ─── */
+  .topbar {
+    background: rgba(0,10,20,0.95);
+    border-bottom: 1px solid var(--neon-cyan);
+    padding: 10px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 0 30px rgba(0,245,255,0.15);
+  }
+
+  .logo-group { display: flex; align-items: center; gap: 14px; }
+
+  .logo-icon {
+    width: 38px; height: 38px;
+    border: 1.5px solid var(--neon-cyan);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .logo-icon::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--dim-cyan), transparent);
+    animation: pulse-bg 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-bg {
+    0%,100% { opacity: 0.5; }
+    50%      { opacity: 1; }
+  }
+
+  .logo-brain { font-size: 20px; z-index: 1; filter: drop-shadow(0 0 6px var(--neon-cyan)); }
+
+  .logo-text h1 {
+    font-family: var(--font-hud);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--neon-cyan);
+    letter-spacing: 3px;
+    text-shadow: 0 0 15px var(--neon-cyan);
+  }
+
+  .logo-text p {
+    font-family: var(--font-data);
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+  }
+
+  .topbar-right { display: flex; align-items: center; gap: 20px; }
+
+  .status-dot {
+    display: flex; align-items: center; gap: 7px;
+    font-family: var(--font-data);
+    font-size: 10px;
+    color: var(--neon-green);
+    letter-spacing: 1px;
+  }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--neon-green);
+    box-shadow: 0 0 8px var(--neon-green);
+    animation: blink 1.4s ease-in-out infinite;
+  }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .clock { font-family: var(--font-data); font-size: 11px; color: var(--text-muted); letter-spacing: 1px; }
+
+  /* ─── HERO ─── */
+  .hero { padding: 32px 28px 20px; display: flex; align-items: flex-start; gap: 32px; }
+  .hero-left { flex: 1; }
+
+  .hero-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(255,0,229,0.4);
+    background: rgba(255,0,229,0.06);
+    padding: 4px 12px;
+    border-radius: 3px;
+    font-family: var(--font-data);
+    font-size: 10px;
+    color: var(--neon-magenta);
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+    text-shadow: 0 0 10px var(--neon-magenta);
+  }
+
+  .hero h2 {
+    font-family: var(--font-hud);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 2px;
+    line-height: 1.3;
+    margin-bottom: 8px;
+  }
+
+  .hero h2 span { color: var(--neon-cyan); text-shadow: 0 0 20px var(--neon-cyan); }
+
+  .hero-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 300;
+    line-height: 1.7;
+    max-width: 480px;
+  }
+
+  /* ─── METRIC STRIP ─── */
+  .metric-strip {
+    padding: 0 28px 24px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  .metric-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glow);
+    border-radius: 8px;
+    padding: 14px 18px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .metric-card:hover { border-color: var(--neon-cyan); }
+
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+  }
+
+  .metric-card.magenta::before { background: linear-gradient(90deg, transparent, var(--neon-magenta), transparent); }
+  .metric-card.green::before   { background: linear-gradient(90deg, transparent, var(--neon-green), transparent); }
+  .metric-card.orange::before  { background: linear-gradient(90deg, transparent, var(--neon-orange), transparent); }
+
+  .metric-label { font-family: var(--font-data); font-size: 9px; color: var(--text-muted); letter-spacing: 2px; margin-bottom: 6px; }
+
+  .metric-value {
+    font-family: var(--font-hud);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 20px var(--neon-cyan);
+    line-height: 1;
+  }
+
+  .metric-value.magenta { color: var(--neon-magenta); text-shadow: 0 0 20px var(--neon-magenta); }
+  .metric-value.green   { color: var(--neon-green);   text-shadow: 0 0 20px var(--neon-green); }
+  .metric-value.orange  { color: var(--neon-orange);  text-shadow: 0 0 20px var(--neon-orange); }
+
+  .metric-sub { font-family: var(--font-data); font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+
+  /* ─── MAIN GRID ─── */
+  .main-grid {
+    padding: 0 28px;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 18px;
+    align-items: start;
+  }
+
+  /* ─── PANELS ─── */
+  .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glow);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .panel-header {
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(0,245,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(0,20,40,0.6);
+  }
+
+  .panel-title {
+    font-family: var(--font-hud);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--neon-cyan);
+    letter-spacing: 2.5px;
+    text-shadow: 0 0 10px rgba(0,245,255,0.5);
+  }
+
+  .panel-badge {
+    font-family: var(--font-data);
+    font-size: 9px;
+    color: var(--neon-green);
+    border: 1px solid rgba(0,255,136,0.3);
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: rgba(0,255,136,0.06);
+    letter-spacing: 1px;
+  }
+
+  /* ─── WAVEFORM ─── */
+  .chart-body { padding: 16px 18px; }
+
+  .chart-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+
+  .axis-label {
+    font-family: var(--font-data);
+    font-size: 10px;
+    color: var(--text-muted);
+    width: 24px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  canvas.waveform {
+    width: 100%;
+    height: 80px;
+    border-radius: 4px;
+    background: rgba(0,5,15,0.6);
+    border: 1px solid rgba(0,245,255,0.1);
+    display: block;
+  }
+
+  /* ─── SPECTRUM ─── */
+  .spectrum-container { padding: 16px 18px; height: 160px; position: relative; }
+  canvas.spectrum { width: 100%; height: 100%; display: block; }
+
+  /* ─── UPLOAD ─── */
+  .upload-zone {
+    margin: 16px;
+    border: 1.5px dashed rgba(0,245,255,0.3);
+    border-radius: 8px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: rgba(0,20,40,0.4);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upload-zone:hover { border-color: var(--neon-cyan); background: var(--dim-cyan); }
+
+  .upload-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(0,245,255,0.05) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .upload-icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+    display: block;
+    filter: drop-shadow(0 0 8px var(--neon-cyan));
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+  .upload-text { font-family: var(--font-hud); font-size: 10px; color: var(--neon-cyan); letter-spacing: 2px; margin-bottom: 6px; }
+  .upload-sub  { font-family: var(--font-data); font-size: 10px; color: var(--text-muted); }
+
+  input[type=file] { display: none; }
+
+  /* ─── RESULT / GAUGE ─── */
+  .result-display { padding: 16px; }
+
+  .risk-meter { position: relative; height: 120px; margin-bottom: 16px; }
+  canvas.gauge { width: 100%; height: 100%; }
+
+  .risk-label-container {
+    position: absolute;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+  }
+
+  .risk-pct { font-family: var(--font-hud); font-size: 28px; font-weight: 900; line-height: 1; }
+  .risk-tag { font-family: var(--font-data); font-size: 10px; letter-spacing: 2px; margin-top: 2px; }
+
+  /* ─── FEATURE BARS ─── */
+  .feat-list { padding: 12px 16px; }
+
+  .feat-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+
+  .feat-name {
+    font-family: var(--font-data);
+    font-size: 10px;
+    color: var(--text-muted);
+    width: 110px;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+  }
+
+  .feat-bar-bg {
+    flex: 1;
+    height: 6px;
+    background: rgba(0,245,255,0.08);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .feat-bar {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta));
+    box-shadow: 0 0 8px rgba(0,245,255,0.4);
+    animation: bar-grow 1.2s ease-out forwards;
+    transform-origin: left;
+  }
+
+  @keyframes bar-grow { from{transform:scaleX(0)} to{transform:scaleX(1)} }
+
+  .feat-pct { font-family: var(--font-data); font-size: 10px; color: var(--neon-cyan); width: 30px; text-align: right; }
+
+  /* ─── ANALYSE BUTTON ─── */
+  .analyse-btn {
+    margin: 0 16px 16px;
+    width: calc(100% - 32px);
+    padding: 13px;
+    border: 1.5px solid var(--neon-cyan);
+    background: transparent;
+    color: var(--neon-cyan);
+    font-family: var(--font-hud);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+    text-shadow: 0 0 10px var(--neon-cyan);
+    box-shadow: 0 0 20px rgba(0,245,255,0.1), inset 0 0 20px rgba(0,245,255,0.03);
+  }
+
+  .analyse-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(0,245,255,0.15), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.5s;
+  }
+
+  .analyse-btn:hover { background: rgba(0,245,255,0.08); box-shadow: 0 0 30px rgba(0,245,255,0.25); }
+  .analyse-btn:hover::before { transform: translateX(100%); }
+  .analyse-btn:active { transform: scale(0.98); }
+
+  /* ─── BOTTOM GRID ─── */
+  .bottom-grid { padding: 18px 28px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+
+  /* ─── PIPELINE STEPS ─── */
+  .pipeline-steps { padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: rgba(0,10,25,0.5);
+    transition: all 0.3s;
+  }
+
+  .step:hover { border-color: rgba(0,245,255,0.3); background: rgba(0,245,255,0.04); }
+
+  .step-num {
+    width: 22px; height: 22px;
+    border-radius: 4px;
+    border: 1px solid var(--neon-cyan);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-hud);
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--neon-cyan);
+    flex-shrink: 0;
+    box-shadow: 0 0 8px rgba(0,245,255,0.2);
+  }
+
+  .step-text { flex: 1; }
+  .step-title { font-family: var(--font-body); font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
+  .step-desc  { font-family: var(--font-data); font-size: 9px; color: var(--text-muted); letter-spacing: 0.5px; }
+
+  .step-chip { font-family: var(--font-data); font-size: 9px; padding: 3px 8px; border-radius: 3px; letter-spacing: 1px; }
+  .chip-green   { background: rgba(0,255,136,0.1);  color: var(--neon-green);   border: 1px solid rgba(0,255,136,0.3); }
+  .chip-magenta { background: rgba(255,0,229,0.1);  color: var(--neon-magenta); border: 1px solid rgba(255,0,229,0.3); }
+  .chip-cyan    { background: rgba(0,245,255,0.1);  color: var(--neon-cyan);    border: 1px solid rgba(0,245,255,0.3); }
+  .chip-orange  { background: rgba(255,107,0,0.1);  color: var(--neon-orange);  border: 1px solid rgba(255,107,0,0.3); }
+
+  /* ─── SEVERITY ─── */
+  .sev-grid { padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+
+  .sev-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: rgba(0,10,25,0.5);
+    border: 1px solid transparent;
+    transition: border-color 0.3s;
+  }
+
+  .sev-row:hover { border-color: rgba(0,245,255,0.2); }
+
+  .sev-bar { width: 4px; height: 36px; border-radius: 2px; flex-shrink: 0; }
+
+  .sev-title  { font-family: var(--font-hud); font-size: 11px; font-weight: 700; margin-bottom: 3px; letter-spacing: 1.5px; }
+  .sev-range  { font-family: var(--font-data); font-size: 9px; color: var(--text-muted); letter-spacing: 0.5px; }
+
+  /* ─── FOOTER ─── */
+  .footer {
+    padding: 20px 28px;
+    margin-top: 24px;
+    border-top: 1px solid rgba(0,245,255,0.1);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .footer-text  { font-family: var(--font-data); font-size: 9px; color: var(--text-muted); letter-spacing: 1px; }
+  .footer-logo  { font-family: var(--font-hud); font-size: 9px; color: rgba(0,245,255,0.4); letter-spacing: 3px; }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 900px) {
+    .main-grid   { grid-template-columns: 1fr; }
+    .bottom-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 600px) {
+    .metric-strip { grid-template-columns: repeat(2, 1fr); }
+    .hero { flex-direction: column; }
+    .topbar { padding: 10px 14px; }
+    .main-grid, .bottom-grid, .hero, .metric-strip { padding-left: 14px; padding-right: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="logo-group">
+      <div class="logo-icon">
+        <span class="logo-brain">🧠</span>
+      </div>
+      <div class="logo-text">
+        <h1>NEUROSCAN OS</h1>
+        <p>PARKINSONS DETECTION SYSTEM · v2.4.1</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="status-dot">
+        <div class="dot"></div>
+        <span>MPU6050 ONLINE</span>
+      </div>
+      <div class="clock" id="clock">--:--:--</div>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-left">
+      <div class="hero-tag">◈ TREMOR ANALYSIS ENGINE</div>
+      <h2>DETECT <span>PARKINSONS</span><br>THROUGH MOTION</h2>
+      <p class="hero-desc">Real-time hand tremor classification using MPU6050 6-DOF sensor data. XGBoost ML pipeline with 60+ time-domain and frequency-domain features. Clinical-grade tremor band analysis (3–12 Hz).</p>
+    </div>
+  </div>
+
+  <!-- METRIC STRIP -->
+  <div class="metric-strip">
+    <div class="metric-card">
+      <div class="metric-label">MODEL ACCURACY</div>
+      <div class="metric-value">97.3%</div>
+      <div class="metric-sub">CV ROC-AUC score</div>
+    </div>
+    <div class="metric-card magenta">
+      <div class="metric-label">FEATURES EXTRACTED</div>
+      <div class="metric-value magenta">60+</div>
+      <div class="metric-sub">Per 5-sec window</div>
+    </div>
+    <div class="metric-card green">
+      <div class="metric-label">SAMPLING RATE</div>
+      <div class="metric-value green">100Hz</div>
+      <div class="metric-sub">MPU6050 output</div>
+    </div>
+    <div class="metric-card orange">
+      <div class="metric-label">TREMOR BAND</div>
+      <div class="metric-value orange">3–12</div>
+      <div class="metric-sub">Hz · Parkinsonian range</div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <!-- LEFT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:18px;">
+
+      <!-- WAVEFORM PANEL -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">LIVE SENSOR WAVEFORM</span>
+          <span class="panel-badge">STREAMING</span>
+        </div>
+        <div class="chart-body">
+          <div class="chart-row">
+            <span class="axis-label">AX</span>
+            <canvas class="waveform" id="wave-ax" width="600" height="80"></canvas>
+          </div>
+          <div class="chart-row">
+            <span class="axis-label">AY</span>
+            <canvas class="waveform" id="wave-ay" width="600" height="80"></canvas>
+          </div>
+          <div class="chart-row">
+            <span class="axis-label">GZ</span>
+            <canvas class="waveform" id="wave-gz" width="600" height="80"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- SPECTRUM PANEL -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">FREQUENCY SPECTRUM</span>
+          <span class="panel-badge" id="dom-freq">DOM FREQ: --Hz</span>
+        </div>
+        <div class="spectrum-container">
+          <canvas class="spectrum" id="spectrum" width="600" height="140"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:18px;">
+
+      <!-- UPLOAD PANEL -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">DATA INPUT</span>
+        </div>
+        <label for="csv-upload">
+          <div class="upload-zone">
+            <span class="upload-icon">📡</span>
+            <div class="upload-text">DROP SENSOR DATA</div>
+            <div class="upload-sub">CSV · JSON · .dat · 6-column format</div>
+          </div>
+        </label>
+        <input type="file" id="csv-upload" accept=".csv,.json,.dat,.txt" onchange="handleUpload(this)">
+        <button class="analyse-btn" onclick="runAnalysis()">⟨ ANALYSE TREMOR ⟩</button>
+      </div>
+
+      <!-- GAUGE / RESULT -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">DIAGNOSIS RESULT</span>
+        </div>
+        <div class="result-display">
+          <div class="risk-meter">
+            <canvas class="gauge" id="gauge" width="280" height="120"></canvas>
+            <div class="risk-label-container">
+              <div class="risk-pct" id="risk-pct" style="color:var(--neon-green);text-shadow:0 0 20px var(--neon-green);">--</div>
+              <div class="risk-tag"  id="risk-tag"  style="color:var(--text-muted);">AWAITING DATA</div>
+            </div>
+          </div>
+          <div id="result-summary" style="font-family: var(--font-data); font-size: 10px; line-height: 1.6; color: var(--text-muted); border-top: 1px solid rgba(0,245,255,0.12); padding-top: 10px;">Upload CSV and click ANALYSE TREMOR to get real model output.</div>
+        </div>
+      </div>
+
+      <!-- FEATURE IMPORTANCE -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">TOP FEATURES</span>
+        </div>
+        <div class="feat-list" id="feat-list"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BOTTOM GRID -->
+  <div class="bottom-grid">
+
+    <!-- ML PIPELINE -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">ML PIPELINE</span>
+        <span class="panel-badge">XGBOOST CORE</span>
+      </div>
+      <div class="pipeline-steps">
+        <div class="step">
+          <div class="step-num">01</div>
+          <div class="step-text">
+            <div class="step-title">Raw Sensor Input</div>
+            <div class="step-desc">MPU6050 → 6-axis stream @100Hz</div>
+          </div>
+          <span class="step-chip chip-green">INPUT</span>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <div class="step-text">
+            <div class="step-title">Sliding Window</div>
+            <div class="step-desc">500 samples · 50% overlap · 5s segments</div>
+          </div>
+          <span class="step-chip chip-cyan">SEGMENT</span>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <div class="step-text">
+            <div class="step-title">Feature Extraction</div>
+            <div class="step-desc">Time + Freq domain · Spectral entropy · Jerk</div>
+          </div>
+          <span class="step-chip chip-magenta">EXTRACT</span>
+        </div>
+        <div class="step">
+          <div class="step-num">04</div>
+          <div class="step-text">
+            <div class="step-title">RobustScaler</div>
+            <div class="step-desc">Normalise → remove outlier sensitivity</div>
+          </div>
+          <span class="step-chip chip-cyan">SCALE</span>
+        </div>
+        <div class="step">
+          <div class="step-num">05</div>
+          <div class="step-text">
+            <div class="step-title">XGBoost Classifier</div>
+            <div class="step-desc">400 trees · depth 5 · class imbalance handled</div>
+          </div>
+          <span class="step-chip chip-orange">MODEL</span>
+        </div>
+        <div class="step">
+          <div class="step-num">06</div>
+          <div class="step-text">
+            <div class="step-title">Risk Output</div>
+            <div class="step-desc">Probability · Severity tier · Dominant freq</div>
+          </div>
+          <span class="step-chip chip-green">OUTPUT</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEVERITY LEGEND -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">SEVERITY CLASSIFICATION</span>
+      </div>
+      <div class="sev-grid">
+        <div class="sev-row">
+          <div class="sev-bar" style="background:var(--neon-green);box-shadow:0 0 8px var(--neon-green);"></div>
+          <div>
+            <div class="sev-title" style="color:var(--neon-green);">NONE</div>
+            <div class="sev-range">Probability &lt; 30% · No tremor detected</div>
+          </div>
+        </div>
+        <div class="sev-row">
+          <div class="sev-bar" style="background:#aaff00;box-shadow:0 0 8px #aaff00;"></div>
+          <div>
+            <div class="sev-title" style="color:#aaff00;">LOW</div>
+            <div class="sev-range">30–50% · Possible early tremor patterns</div>
+          </div>
+        </div>
+        <div class="sev-row">
+          <div class="sev-bar" style="background:var(--neon-orange);box-shadow:0 0 8px var(--neon-orange);"></div>
+          <div>
+            <div class="sev-title" style="color:var(--neon-orange);">MODERATE</div>
+            <div class="sev-range">50–70% · Clinical follow-up recommended</div>
+          </div>
+        </div>
+        <div class="sev-row">
+          <div class="sev-bar" style="background:#ff4444;box-shadow:0 0 8px #ff4444;"></div>
+          <div>
+            <div class="sev-title" style="color:#ff4444;">HIGH</div>
+            <div class="sev-range">70–85% · Strong Parkinsonian indicators</div>
+          </div>
+        </div>
+        <div class="sev-row">
+          <div class="sev-bar" style="background:var(--neon-magenta);box-shadow:0 0 8px var(--neon-magenta);"></div>
+          <div>
+            <div class="sev-title" style="color:var(--neon-magenta);">SEVERE</div>
+            <div class="sev-range">&gt; 85% · Immediate medical assessment</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span class="footer-text">⚠ FOR RESEARCH AND SCREENING PURPOSES ONLY — NOT A MEDICAL DIAGNOSIS</span>
+    <span class="footer-logo">NEUROSCAN OS · MPU6050</span>
+  </div>
+
+</div><!-- /.shell -->
+
+<script>
+const API_BASE_URL = window.location.origin;
+const LIVE_POLL_MS = 1000;
+const REQUIRED_COLUMNS = ["xAcc", "yAcc", "zAcc", "xGyro", "yGyro", "zGyro"];
+
+let uploadedFile = null;
+let parsedData = null;
+let currentRisk = 0;
+let targetRisk = 0;
+let liveMode = false;
+let livePollTimer = null;
+let lastLivePredictionAt = "";
+
+(function tickClock() {
+  const el = document.getElementById("clock");
+  function update() {
+    el.textContent = new Date().toTimeString().slice(0, 8) + " UTC";
+  }
+  update();
+  setInterval(update, 1000);
+})();
+
+function riskColor(pct) {
+  if (pct < 30) return "#00ff88";
+  if (pct < 50) return "#aaff00";
+  if (pct < 70) return "#ff6b00";
+  if (pct < 85) return "#ff4444";
+  return "#ff00e5";
+}
+
+function setAnalyseButtonState() {
+  const btn = document.querySelector(".analyse-btn");
+  if (!btn) return;
+
+  if (uploadedFile) {
+    btn.textContent = "⟨ ANALYSE UPLOADED FILE ⟩";
+    return;
+  }
+
+  btn.textContent = liveMode ? "⟨ STOP LIVE MONITOR ⟩" : "⟨ START LIVE MONITOR ⟩";
+}
+
+function parseCsvText(text) {
+  const rows = text.split(/\r?\n/).filter(Boolean);
+  if (rows.length < 2) {
+    throw new Error("CSV file is empty or invalid.");
+  }
+
+  const headers = rows[0].split(",").map((h) => h.trim());
+  const index = {};
+  for (const col of REQUIRED_COLUMNS) {
+    const idx = headers.indexOf(col);
+    if (idx === -1) throw new Error("CSV must include columns: " + REQUIRED_COLUMNS.join(", "));
+    index[col] = idx;
+  }
+
+  const out = { xAcc: [], yAcc: [], zAcc: [], xGyro: [], yGyro: [], zGyro: [] };
+
+  for (let i = 1; i < rows.length; i++) {
+    const cols = rows[i].split(",");
+    if (cols.length < headers.length) continue;
+
+    const sample = {
+      xAcc: Number(cols[index.xAcc]),
+      yAcc: Number(cols[index.yAcc]),
+      zAcc: Number(cols[index.zAcc]),
+      xGyro: Number(cols[index.xGyro]),
+      yGyro: Number(cols[index.yGyro]),
+      zGyro: Number(cols[index.zGyro])
+    };
+
+    if (Object.values(sample).some((v) => Number.isNaN(v))) continue;
+
+    out.xAcc.push(sample.xAcc);
+    out.yAcc.push(sample.yAcc);
+    out.zAcc.push(sample.zAcc);
+    out.xGyro.push(sample.xGyro);
+    out.yGyro.push(sample.yGyro);
+    out.zGyro.push(sample.zGyro);
+  }
+
+  if (out.xAcc.length < 2) throw new Error("CSV has no valid numeric rows.");
+  return out;
+}
+
+function parseSamplesArray(samples) {
+  const out = { xAcc: [], yAcc: [], zAcc: [], xGyro: [], yGyro: [], zGyro: [] };
+  for (const s of samples || []) {
+    if (!s) continue;
+    out.xAcc.push(Number(s.xAcc || 0));
+    out.yAcc.push(Number(s.yAcc || 0));
+    out.zAcc.push(Number(s.zAcc || 0));
+    out.xGyro.push(Number(s.xGyro || 0));
+    out.yGyro.push(Number(s.yGyro || 0));
+    out.zGyro.push(Number(s.zGyro || 0));
+  }
+  return out;
+}
+
+function drawWave(id, data, color, range) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.strokeStyle = "rgba(0,245,255,0.06)";
+  ctx.lineWidth = 0.5;
+  for (let i = 1; i < 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(0, (H * i) / 4);
+    ctx.lineTo(W, (H * i) / 4);
+    ctx.stroke();
+  }
+
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = "rgba(0,245,255,0.12)";
+  ctx.beginPath();
+  ctx.moveTo(0, H / 2);
+  ctx.lineTo(W, H / 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const N = data.length;
+  if (!N) return;
+
+  const grad = ctx.createLinearGradient(0, 0, W, 0);
+  grad.addColorStop(0, "rgba(0,245,255,0.1)");
+  grad.addColorStop(0.7, color);
+  grad.addColorStop(1, color);
+
+  ctx.beginPath();
+  for (let i = 0; i < N; i++) {
+    const x = (i / Math.max(N - 1, 1)) * W;
+    const y = H / 2 - (data[i] / range) * (H / 2 - 8);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 4;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+function computeFftMagnitudes(signal) {
+  const N = signal.length;
+  const out = [];
+  for (let k = 0; k < N; k++) {
+    let re = 0;
+    let im = 0;
+    for (let n = 0; n < N; n++) {
+      const angle = (2 * Math.PI * k * n) / N;
+      re += signal[n] * Math.cos(angle);
+      im -= signal[n] * Math.sin(angle);
+    }
+    out.push(Math.sqrt(re * re + im * im) / N);
+  }
+  return out;
+}
+
+function computeSpectrumFromParsed(parsed, samplingRate = 100) {
+  const n = Math.min(parsed.xAcc.length, 512);
+  if (n < 32) return { freqs: [], mags: [], dominantHz: 0 };
+
+  const magSignal = [];
+  for (let i = 0; i < n; i++) {
+    const m = Math.sqrt(parsed.xAcc[i] ** 2 + parsed.yAcc[i] ** 2 + parsed.zAcc[i] ** 2);
+    magSignal.push(m);
+  }
+
+  const mean = magSignal.reduce((a, b) => a + b, 0) / n;
+  const centered = magSignal.map((v) => v - mean);
+  const fft = computeFftMagnitudes(centered);
+
+  const half = Math.floor(n / 2);
+  const freqs = [];
+  const mags = [];
+  for (let k = 1; k <= half; k++) {
+    const hz = (k * samplingRate) / n;
+    if (hz > 15) break;
+    freqs.push(hz);
+    mags.push(fft[k]);
+  }
+
+  let dominantHz = 0;
+  let best = -1;
+  for (let i = 0; i < freqs.length; i++) {
+    if (freqs[i] >= 3 && freqs[i] <= 12 && mags[i] > best) {
+      best = mags[i];
+      dominantHz = freqs[i];
+    }
+  }
+
+  return { freqs, mags, dominantHz };
+}
+
+function drawSpectrum(data) {
+  const canvas = document.getElementById("spectrum");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.strokeStyle = "rgba(0,245,255,0.06)";
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    ctx.moveTo(0, (i / 4) * H);
+    ctx.lineTo(W, (i / 4) * H);
+    ctx.stroke();
+  }
+
+  const bars = Math.min(30, data.freqs.length);
+  if (!bars) {
+    document.getElementById("dom-freq").textContent = "DOM FREQ: --Hz";
+    return;
+  }
+
+  const maxAmp = Math.max(...data.mags, 1e-6);
+  for (let i = 0; i < bars; i++) {
+    const idx = Math.floor((i / bars) * data.freqs.length);
+    const hz = data.freqs[idx];
+    const ampNorm = data.mags[idx] / maxAmp;
+
+    const inTremorBand = hz >= 4 && hz <= 6;
+    const barW = W / bars - 2;
+    const barH = ampNorm * (H - 20);
+    const x = (i / bars) * W;
+    const y = H - barH;
+
+    ctx.fillStyle = inTremorBand ? "rgba(255,0,229,0.75)" : "rgba(0,245,255,0.45)";
+    ctx.fillRect(x, y, barW, barH);
+  }
+
+  ctx.font = '9px "Share Tech Mono"';
+  ctx.fillStyle = "rgba(0,245,255,0.35)";
+  ctx.fillText("0-15 Hz", 4, H - 4);
+  ctx.fillStyle = "rgba(255,0,229,0.75)";
+  ctx.fillText("4-6 Hz tremor band", W * 0.3, H - 4);
+
+  const domEl = document.getElementById("dom-freq");
+  domEl.textContent = data.dominantHz > 0 ? `DOM FREQ: ${data.dominantHz.toFixed(1)}Hz` : "DOM FREQ: --Hz";
+}
+
+function drawGauge(pct) {
+  const canvas = document.getElementById("gauge");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const cx = W / 2;
+  const cy = H - 10;
+  const r = 80;
+  const startA = Math.PI;
+  const fillA = Math.PI + (pct / 100) * Math.PI;
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, Math.PI, 2 * Math.PI);
+  ctx.strokeStyle = "rgba(0,245,255,0.1)";
+  ctx.lineWidth = 10;
+  ctx.lineCap = "round";
+  ctx.stroke();
+
+  const color = riskColor(pct);
+  const grad = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
+  grad.addColorStop(0, "rgba(0,245,255,0.6)");
+  grad.addColorStop(1, color);
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, startA, fillA);
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 10;
+  ctx.lineCap = "round";
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 15;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  const na = Math.PI + (pct / 100) * Math.PI;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + (r - 8) * Math.cos(na), cy + (r - 8) * Math.sin(na));
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  const pctEl = document.getElementById("risk-pct");
+  pctEl.textContent = pct > 0 ? `${pct}%` : "--";
+  pctEl.style.color = color;
+  pctEl.style.textShadow = `0 0 20px ${color}`;
+}
+
+function renderFeatureBarsFromModel(percentages) {
+  const feat = [
+    { name: "normal_probability", pct: Number(percentages.Normal || 0) },
+    { name: "mild_tremor_probability", pct: Number(percentages["Mild Tremor"] || 0) },
+    { name: "parkinsons_probability", pct: Number(percentages["Parkinson's Disease"] || 0) }
+  ];
+
+  const el = document.getElementById("feat-list");
+  el.innerHTML = feat.map((f, i) => `
+    <div class="feat-item">
+      <span class="feat-name">${f.name}</span>
+      <div class="feat-bar-bg">
+        <div class="feat-bar" style="width:${f.pct.toFixed(1)}%;animation-delay:${i * 0.08}s"></div>
+      </div>
+      <span class="feat-pct">${f.pct.toFixed(0)}%</span>
+    </div>`).join("");
+}
+
+function applyPrediction(payload, sourceLabel) {
+  const pct = payload.condition_percentages || {};
+  targetRisk = Math.max(0, Math.min(100, Number(pct["Parkinson's Disease"] || 0)));
+
+  const tagEl = document.getElementById("risk-tag");
+  tagEl.textContent = payload.predicted_label || "UNKNOWN";
+  tagEl.style.color = riskColor(targetRisk);
+
+  const summaryEl = document.getElementById("result-summary");
+  summaryEl.innerHTML =
+    `Source: ${sourceLabel}<br>` +
+    `Diagnosis: ${payload.diagnosis_text}<br>` +
+    `Normal: ${Number(pct.Normal || 0).toFixed(2)}% · ` +
+    `Mild Tremor: ${Number(pct["Mild Tremor"] || 0).toFixed(2)}% · ` +
+    `Parkinson's Disease: ${Number(pct["Parkinson's Disease"] || 0).toFixed(2)}%`;
+
+  renderFeatureBarsFromModel(pct);
+}
+
+function renderFromParsed(parsed) {
+  const n = Math.min(parsed.xAcc.length, 250);
+  drawWave("wave-ax", parsed.xAcc.slice(0, n), "#00f5ff", 3);
+  drawWave("wave-ay", parsed.yAcc.slice(0, n), "#ff00e5", 3);
+  drawWave("wave-gz", parsed.zGyro.slice(0, n), "#00ff88", 15);
+
+  const spectrum = computeSpectrumFromParsed(parsed, 100);
+  drawSpectrum(spectrum);
+}
+
+function stopLiveMode() {
+  liveMode = false;
+  if (livePollTimer) {
+    clearInterval(livePollTimer);
+    livePollTimer = null;
+  }
+  setAnalyseButtonState();
+}
+
+async function pollLiveState() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/live-state`);
+    const state = await response.json();
+    if (!response.ok) {
+      throw new Error(state.error || "Live state fetch failed");
+    }
+
+    const samples = state.recent_samples || [];
+    if (samples.length > 0) {
+      const parsed = parseSamplesArray(samples);
+      renderFromParsed(parsed);
+
+      const summaryEl = document.getElementById("result-summary");
+      if (!state.prediction_ready) {
+        summaryEl.textContent = `Live buffer: ${state.buffer_count}/${state.window_size} samples (waiting for enough data).`;
+      }
+    }
+
+    const latest = state.latest_prediction;
+    if (latest && latest.updated_at && latest.updated_at !== lastLivePredictionAt) {
+      lastLivePredictionAt = latest.updated_at;
+      applyPrediction(latest, "ESP32 LIVE STREAM");
+    }
+  } catch (err) {
+    const summaryEl = document.getElementById("result-summary");
+    summaryEl.textContent = `Live mode error: ${String(err.message || err)}`;
+  }
+}
+
+function startLiveMode() {
+  uploadedFile = null;
+  parsedData = null;
+  lastLivePredictionAt = "";
+  liveMode = true;
+  setAnalyseButtonState();
+
+  const summaryEl = document.getElementById("result-summary");
+  summaryEl.textContent = "Live mode started. Waiting for ESP32 samples on /api/live-sample...";
+
+  pollLiveState();
+  livePollTimer = setInterval(pollLiveState, LIVE_POLL_MS);
+}
+
+async function runAnalysis() {
+  if (uploadedFile) {
+    const btn = document.querySelector(".analyse-btn");
+    const old = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "⟨ ANALYSING FILE... ⟩";
+
+    try {
+      const fd = new FormData();
+      fd.append("file", uploadedFile);
+
+      const response = await fetch(`${API_BASE_URL}/predict`, {
+        method: "POST",
+        body: fd
+      });
+
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Prediction failed");
+
+      applyPrediction(payload, "UPLOADED CSV FILE");
+    } catch (err) {
+      alert(String(err.message || err));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = old;
+      setAnalyseButtonState();
+    }
+    return;
+  }
+
+  if (liveMode) {
+    stopLiveMode();
+    const summaryEl = document.getElementById("result-summary");
+    summaryEl.textContent = "Live mode stopped. Click START LIVE MONITOR to resume.";
+  } else {
+    startLiveMode();
+  }
+}
+
+function handleUpload(input) {
+  if (!input.files || !input.files.length) return;
+
+  stopLiveMode();
+  uploadedFile = input.files[0];
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      parsedData = parseCsvText(String(ev.target.result || ""));
+      renderFromParsed(parsedData);
+
+      const summaryEl = document.getElementById("result-summary");
+      summaryEl.textContent = `${uploadedFile.name} loaded (${parsedData.xAcc.length} rows). Click ANALYSE UPLOADED FILE.`;
+      setAnalyseButtonState();
+    } catch (err) {
+      uploadedFile = null;
+      parsedData = null;
+      setAnalyseButtonState();
+      alert(String(err.message || err));
+    }
+  };
+  reader.readAsText(uploadedFile);
+}
+
+function loop() {
+  if (Math.abs(currentRisk - targetRisk) > 0.2) {
+    currentRisk += (targetRisk - currentRisk) * 0.08;
+  }
+  drawGauge(Math.round(currentRisk));
+  requestAnimationFrame(loop);
+}
+
+renderFeatureBarsFromModel({ Normal: 0, "Mild Tremor": 0, "Parkinson's Disease": 0 });
+drawGauge(0);
+setAnalyseButtonState();
+loop();
+</script>
+
+</body>
+</html>

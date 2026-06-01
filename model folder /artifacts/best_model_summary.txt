@@ -1,0 +1,8 @@
+Samples: 30
+Features: 36
+Classes: [1, 2, 3]
+Groups: 12
+CV folds: 3
+Best model: Random Forest
+Mean CV accuracy: 0.8917
+Mean CV macro F1: 0.8997
